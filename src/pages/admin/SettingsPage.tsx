@@ -16,9 +16,9 @@ import type { Profile, EventSetting } from "@shared/types";
 const eventSettingSchema = z.object({
   event_name: z.string().min(1, "Event name is required."),
   invitation_slug: z.string().min(1, "Invitation slug is required."),
-  invitation_url: z.string().optional().nullable(),
-  rsvp_url: z.string().optional().nullable(),
-  rsvp_password: z.string().optional().nullable(),
+  invitation_url: z.string().optional().nullable().default(''),
+  rsvp_url: z.string().optional().nullable().default(''),
+  rsvp_password: z.string().optional().nullable().default(''),
   is_active: z.boolean().default(false),
 });
 type EventSettingFormValues = z.infer<typeof eventSettingSchema>;

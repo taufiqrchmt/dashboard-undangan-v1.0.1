@@ -30,7 +30,7 @@ export function AppSidebar(): JSX.Element {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive>
+              <SidebarMenuButton asChild variant="primary">
                 <a href="#"><Home /> <span>Home</span></a>
               </SidebarMenuButton>
             </SidebarMenuItem>

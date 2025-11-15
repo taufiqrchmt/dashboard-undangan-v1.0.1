@@ -182,15 +182,22 @@ interface SidebarMenuButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof sidebarMenuButtonVariants> {
   asChild?: boolean
+  isActive?: boolean
 }
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   SidebarMenuButtonProps
->(({ className, variant, size, ...props }, ref) => {
+>(({ className, variant, size, isActive, ...props }, ref) => {
   return (
     <button
       ref={ref}
-      className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
+      className={cn(
+        sidebarMenuButtonVariants({
+          variant: isActive ? "primary" : variant ?? "ghost",
+          size,
+          className,
+        })
+      )}
       {...props}
     />
   )
