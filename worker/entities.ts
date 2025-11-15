@@ -3,10 +3,12 @@ import type { Profile, EventSetting, MessageTemplate, GuestGroup, Guest, SendLog
 // --- SEED DATA ---
 const ADMIN_ID = '00000000-0000-0000-0000-000000000001';
 const USER_ID = '00000000-0000-0000-0000-000000000002';
+const USER_ID_2 = '00000000-0000-0000-0000-000000000003';
 const EVENT_ID = 'e0000000-0000-0000-0000-000000000001';
 const SEED_PROFILES: Profile[] = [
   { id: ADMIN_ID, name: 'Admin User', email: 'admin@example.com', role: 'admin', created_at: new Date().toISOString() },
   { id: USER_ID, name: 'Fathia & Saverro', email: 'user@example.com', role: 'user', created_at: new Date().toISOString() },
+  { id: USER_ID_2, name: 'John Doe', email: 'john.doe@example.com', role: 'user', created_at: new Date().toISOString() },
 ];
 const SEED_EVENT_SETTINGS: EventSetting[] = [
   {

@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { Env } from './core-utils';
 import { ProfileEntity, EventSettingEntity, MessageTemplateEntity, GuestGroupEntity, GuestEntity, SendLogEntity } from "./entities";
 import { ok, bad, notFound } from './core-utils';
-import type { Guest, GuestGroup, MessageTemplate, SendLog } from "@shared/types";
+import type { Guest, GuestGroup, MessageTemplate, SendLog, Profile, EventSetting } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // Ensure all seed data is present on first load
   app.use('/api/*', async (c, next) => {
@@ -38,11 +38,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return ok(c, profile);
   });
-  // PROFILES
-  app.get('/api/profiles', async (c) => {
-    const { items } = await ProfileEntity.list(c.env);
-    return ok(c, items);
-  });
+  // --- USER-FACING ROUTES ---
   // EVENT SETTINGS (for a specific user)
   app.get('/api/users/:userId/event-settings', async (c) => {
     const userId = c.req.param('userId');
@@ -156,7 +152,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!(await entity.exists())) return notFound(c, 'Group not found');
     const current = await entity.getState();
     if (current.user_id !== userId) return bad(c, 'Permission denied');
-    // TODO: Handle guests in this group. For now, we just delete the group.
     await GuestGroupEntity.delete(c.env, groupId);
     return ok(c, { id: groupId });
   });
@@ -251,5 +246,122 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     await SendLogEntity.create(c.env, newLog);
     return ok(c, newLog);
+  });
+  // --- ADMIN ROUTES ---
+  // USER MANAGEMENT
+  app.get('/api/admin/users', async (c) => {
+    const { items } = await ProfileEntity.list(c.env);
+    return ok(c, items);
+  });
+  const userCreateSchema = z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    role: z.enum(['admin', 'user']),
+  });
+  app.post('/api/admin/users', zValidator('json', userCreateSchema), async (c) => {
+    const body = c.req.valid('json');
+    const existing = new ProfileEntity(c.env, body.email);
+    if (await existing.exists()) return bad(c, 'User with this email already exists.');
+    const newUser: Profile = {
+      id: crypto.randomUUID(),
+      name: body.name,
+      email: body.email,
+      role: body.role,
+      created_at: new Date().toISOString(),
+    };
+    await ProfileEntity.create(c.env, newUser);
+    return ok(c, newUser);
+  });
+  const userUpdateSchema = z.object({
+    name: z.string().min(1),
+    role: z.enum(['admin', 'user']),
+  });
+  app.put('/api/admin/users/:userId', zValidator('json', userUpdateSchema), async (c) => {
+    const userId = c.req.param('userId');
+    const body = c.req.valid('json');
+    const { items: profiles } = await ProfileEntity.list(c.env);
+    const profile = profiles.find(p => p.id === userId);
+    if (!profile) return notFound(c, 'User not found');
+    const entity = new ProfileEntity(c.env, profile.email);
+    const updatedProfile: Profile = { ...profile, name: body.name, role: body.role };
+    await entity.save(updatedProfile);
+    return ok(c, updatedProfile);
+  });
+  // GLOBAL TEMPLATES
+  app.get('/api/admin/templates', async (c) => {
+    const { items } = await MessageTemplateEntity.list(c.env);
+    return ok(c, items.filter(t => t.scope === 'global'));
+  });
+  app.post('/api/admin/templates', zValidator('json', templateCreateSchema), async (c) => {
+    const body = c.req.valid('json');
+    const newTemplate: MessageTemplate = {
+      id: crypto.randomUUID(),
+      owner_user_id: null,
+      scope: 'global',
+      name: body.name,
+      content_wa: body.content_wa,
+      content_copy: body.content_copy,
+      is_default: body.is_default ?? false,
+      created_at: new Date().toISOString(),
+    };
+    await MessageTemplateEntity.create(c.env, newTemplate);
+    return ok(c, newTemplate);
+  });
+  app.put('/api/admin/templates/:templateId', zValidator('json', templateCreateSchema), async (c) => {
+    const templateId = c.req.param('templateId');
+    const body = c.req.valid('json');
+    const entity = new MessageTemplateEntity(c.env, templateId);
+    if (!(await entity.exists())) return notFound(c, 'Template not found');
+    const current = await entity.getState();
+    if (current.scope !== 'global') return bad(c, 'Permission denied');
+    const updatedTemplate: MessageTemplate = { ...current, ...body };
+    await entity.save(updatedTemplate);
+    return ok(c, updatedTemplate);
+  });
+  app.delete('/api/admin/templates/:templateId', async (c) => {
+    const templateId = c.req.param('templateId');
+    const entity = new MessageTemplateEntity(c.env, templateId);
+    if (!(await entity.exists())) return notFound(c, 'Template not found');
+    const current = await entity.getState();
+    if (current.scope !== 'global') return bad(c, 'Permission denied');
+    await MessageTemplateEntity.delete(c.env, templateId);
+    return ok(c, { id: templateId });
+  });
+  // EVENT SETTINGS MANAGEMENT
+  const eventSettingSchema = z.object({
+    event_name: z.string().min(1),
+    invitation_slug: z.string().min(1),
+    invitation_url: z.string().optional().nullable(),
+    rsvp_url: z.string().optional().nullable(),
+    rsvp_password: z.string().optional().nullable(),
+    is_active: z.boolean(),
+  });
+  app.post('/api/admin/users/:userId/event-settings', zValidator('json', eventSettingSchema), async (c) => {
+    const userId = c.req.param('userId');
+    const body = c.req.valid('json');
+    const newSetting: EventSetting = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      ...body,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    await EventSettingEntity.create(c.env, newSetting);
+    return ok(c, newSetting);
+  });
+  app.put('/api/admin/users/:userId/event-settings/:settingId', zValidator('json', eventSettingSchema), async (c) => {
+    const { userId, settingId } = c.req.param();
+    const body = c.req.valid('json');
+    const entity = new EventSettingEntity(c.env, settingId);
+    if (!(await entity.exists())) return notFound(c, 'Setting not found');
+    const current = await entity.getState();
+    if (current.user_id !== userId) return bad(c, 'Mismatched user for this setting');
+    const updatedSetting: EventSetting = {
+      ...current,
+      ...body,
+      updated_at: new Date().toISOString(),
+    };
+    await entity.save(updatedSetting);
+    return ok(c, updatedSetting);
   });
 }
