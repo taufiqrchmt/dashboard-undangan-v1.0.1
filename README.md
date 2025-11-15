@@ -1,6 +1,6 @@
 # InviteFlow: Wedding Invitation Management Suite
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/taufiqrchmt/dashboard-undangan-v1.0.1)
 
 InviteFlow is a sophisticated, minimalist web application designed to streamline the process of managing and sending wedding invitations. It provides a dual-role system for administrators and users. Administrators can manage user accounts, define global invitation templates, and configure event-specific details for each user, such as custom invitation URLs. Regular users can manage their guest lists by organizing them into groups, create personalized invitation templates, and utilize the powerful 'Send Invitation' module. This core feature allows users to select a guest group and a template to automatically generate personalized WhatsApp messages, plain text invitations, and unique invitation links for each guest. The application focuses on an elegant, intuitive user experience with a clean, modern interface, ensuring that managing hundreds of invitations is a seamless and delightful process.
 
@@ -103,4 +103,4 @@ This application is designed to be deployed to the Cloudflare network.
 
 Alternatively, you can deploy directly from your GitHub repository using the button below.
 
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/taufiqrchmt/dashboard-undangan-v1.0.1)
