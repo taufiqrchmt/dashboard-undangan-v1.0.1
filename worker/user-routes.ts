@@ -364,4 +364,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await entity.save(updatedSetting);
     return ok(c, updatedSetting);
   });
+  // ADMIN STATS
+  app.get('/api/admin/stats/guests', async (c) => {
+    const { items } = await GuestEntity.list(c.env);
+    return ok(c, { count: items.length });
+  });
+  app.get('/api/admin/stats/events', async (c) => {
+    const { items } = await EventSettingEntity.list(c.env);
+    const activeEvents = items.filter(e => e.is_active).length;
+    return ok(c, { count: activeEvents });
+  });
 }

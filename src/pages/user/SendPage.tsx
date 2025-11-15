@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Copy, Link, MessageCircle, Checkbox } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Copy, Link, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/auth";
@@ -83,21 +84,29 @@ export default function SendPage() {
       setIsGenerating(false);
     }
   };
-  const handleAction = async (guestId: string, channel: SendChannel) => {
-    if (!profile || !selectedTemplateId) return;
+  const updateGuestSentStatus = async (guestId: string, is_sent: boolean) => {
+    if (!profile) return;
     try {
       await api(`/api/users/${profile.id}/guests/${guestId}/send-status`, {
         method: 'PUT',
-        body: JSON.stringify({ is_sent: true }),
+        body: JSON.stringify({ is_sent }),
       });
+      setGeneratedList(prev => prev.map(item => item.guest.id === guestId ? { ...item, guest: { ...item.guest, is_sent } } : item));
+      toast.success(`Guest status updated.`);
+    } catch (error) {
+      toast.error("Failed to update guest status.");
+    }
+  };
+  const handleAction = async (guestId: string, channel: SendChannel) => {
+    if (!profile || !selectedTemplateId) return;
+    updateGuestSentStatus(guestId, true);
+    try {
       await api(`/api/users/${profile.id}/send-logs`, {
         method: 'POST',
         body: JSON.stringify({ guest_id: guestId, template_id: selectedTemplateId, channel }),
       });
-      setGeneratedList(prev => prev.map(item => item.guest.id === guestId ? { ...item, guest: { ...item.guest, is_sent: true } } : item));
-      toast.success("Action logged and status updated.");
     } catch (error) {
-      toast.error("Failed to update guest status.");
+      toast.error("Failed to log sending action.");
     }
   };
   const handleCopy = (text: string, guestId: string, channel: SendChannel) => {
@@ -163,23 +172,24 @@ export default function SendPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Sent</TableHead>
                   <TableHead>Guest Name</TableHead>
                   <TableHead>Group</TableHead>
-                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {generatedList.map(item => (
                   <TableRow key={item.guest.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={item.guest.is_sent}
+                        onCheckedChange={(checked) => updateGuestSentStatus(item.guest.id, !!checked)}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">{item.guest.name}</TableCell>
                     <TableCell>
                       {item.guest.group_id && <Badge variant="secondary">{groupMap.get(item.guest.group_id)}</Badge>}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={item.guest.is_sent ? "default" : "outline"}>
-                        {item.guest.is_sent ? "Sent" : "Not Sent"}
-                      </Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="icon" onClick={() => handleWhatsApp(item.wa_link, item.guest.id)} disabled={!item.guest.phone}><MessageCircle className="h-4 w-4" /></Button>

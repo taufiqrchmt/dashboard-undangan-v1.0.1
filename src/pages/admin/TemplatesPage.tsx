@@ -122,7 +122,7 @@ export default function AdminTemplatesPage() {
           <p className="text-muted-foreground col-span-2 text-center">No global templates found.</p>
         )}
       </div>
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen} className="sm:max-w-[625px]">
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
             <DialogTitle>{selectedTemplate ? "Edit Global Template" : "Create New Global Template"}</DialogTitle>

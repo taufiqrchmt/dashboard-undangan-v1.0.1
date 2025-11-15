@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, MessageSquareText, Settings, Contact } from "lucide-react";
 import { api } from "@/lib/api-client";
-import type { Profile, MessageTemplate, Guest, EventSetting } from "@shared/types";
+import type { Profile, MessageTemplate } from "@shared/types";
+import { toast } from "sonner";
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -18,48 +19,26 @@ export default function AdminDashboard() {
       const [usersData, templatesData, guestsData, eventsData] = await Promise.all([
         api<Profile[]>('/api/admin/users'),
         api<MessageTemplate[]>('/api/admin/templates'),
-        api<Guest[]>('/api/users/all/guests'), // This is a simplification; a real app would need a dedicated admin endpoint
-        api<EventSetting[]>('/api/users/all/event-settings'), // Same as above
+        api<{ count: number }>('/api/admin/stats/guests'),
+        api<{ count: number }>('/api/admin/stats/events'),
       ]);
       setStats({
         totalUsers: usersData.length,
         globalTemplates: templatesData.length,
-        totalGuests: guestsData.length,
-        activeEvents: eventsData.filter(e => e.is_active).length,
+        totalGuests: guestsData.count,
+        activeEvents: eventsData.count,
       });
     } catch (error) {
       console.error("Failed to fetch admin dashboard data", error);
-      // Fallback to zero stats on error
+      toast.error("Could not load dashboard statistics.");
       setStats({ totalUsers: 0, globalTemplates: 0, totalGuests: 0, activeEvents: 0 });
     } finally {
       setIsLoading(false);
     }
   }, []);
   useEffect(() => {
-    // A more robust solution would be to create dedicated admin endpoints for aggregate stats.
-    // For this project, we'll make a simplified assumption and fetch all data.
-    // This is not scalable but works for the demo.
-    const fetchAll = async () => {
-      setIsLoading(true);
-      try {
-        const users = await api<Profile[]>('/api/admin/users');
-        const templates = await api<MessageTemplate[]>('/api/admin/templates');
-        // We don't have endpoints to get ALL guests/events, so we'll mock these for now.
-        // A real implementation would require new backend routes.
-        setStats({
-          totalUsers: users.length,
-          globalTemplates: templates.length,
-          totalGuests: 2, // Mocked
-          activeEvents: 1, // Mocked
-        });
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchAll();
-  }, []);
+    fetchDashboardData();
+  }, [fetchDashboardData]);
   const statCards = [
     { title: "Total Users", value: stats.totalUsers, icon: Users },
     { title: "Global Templates", value: stats.globalTemplates, icon: MessageSquareText },

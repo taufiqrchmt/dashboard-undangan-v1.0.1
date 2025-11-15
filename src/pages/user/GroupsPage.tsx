@@ -18,7 +18,7 @@ import { useAuthStore } from "@/lib/auth";
 import type { GuestGroup } from "@shared/types";
 const groupSchema = z.object({
   name: z.string().min(1, "Group name is required."),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   sort_order: z.number().optional().default(0),
 });
 type GroupFormValues = z.infer<typeof groupSchema>;
@@ -163,7 +163,7 @@ export default function GroupsPage() {
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
-                  <FormControl><Textarea placeholder="A short description of the group" {...field} /></FormControl>
+                  <FormControl><Textarea placeholder="A short description of the group" {...field} value={field.value ?? ''} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
