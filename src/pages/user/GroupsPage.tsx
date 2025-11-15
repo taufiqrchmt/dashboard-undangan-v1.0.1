@@ -5,7 +5,7 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import type { GuestGroup } from "@shared/types";
 const groupSchema = z.object({
   name: z.string().min(1, "Group name is required."),
   description: z.string().optional(),
-  sort_order: z.coerce.number().optional().default(0),
+  sort_order: z.number().optional().default(0),
 });
 type GroupFormValues = z.infer<typeof groupSchema>;
 export default function GroupsPage() {
@@ -170,7 +170,7 @@ export default function GroupsPage() {
               <FormField control={form.control} name="sort_order" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Sort Order</FormLabel>
-                  <FormControl><Input type="number" {...field} /></FormControl>
+                  <FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

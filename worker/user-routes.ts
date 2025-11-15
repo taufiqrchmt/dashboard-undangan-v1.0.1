@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import type { Env } from './core-utils';
-import { ProfileEntity, EventSettingEntity, MessageTemplateEntity, GuestGroupEntity, GuestEntity } from "./entities";
+import { ProfileEntity, EventSettingEntity, MessageTemplateEntity, GuestGroupEntity, GuestEntity, SendLogEntity } from "./entities";
 import { ok, bad, notFound } from './core-utils';
-import type { Guest, GuestGroup, MessageTemplate } from "@shared/types";
+import type { Guest, GuestGroup, MessageTemplate, SendLog } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // Ensure all seed data is present on first load
   app.use('/api/*', async (c, next) => {
@@ -14,6 +14,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       MessageTemplateEntity.ensureSeed(c.env),
       GuestGroupEntity.ensureSeed(c.env),
       GuestEntity.ensureSeed(c.env),
+      SendLogEntity.ensureSeed(c.env),
     ]);
     await next();
   });
@@ -214,5 +215,41 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (current.user_id !== userId) return bad(c, 'Permission denied');
     await GuestEntity.delete(c.env, guestId);
     return ok(c, { id: guestId });
+  });
+  // SENDING LOGIC
+  const sendStatusSchema = z.object({ is_sent: z.boolean() });
+  app.put('/api/users/:userId/guests/:guestId/send-status', zValidator('json', sendStatusSchema), async (c) => {
+    const { userId, guestId } = c.req.param();
+    const { is_sent } = c.req.valid('json');
+    const entity = new GuestEntity(c.env, guestId);
+    if (!(await entity.exists())) return notFound(c, 'Guest not found');
+    const current = await entity.getState();
+    if (current.user_id !== userId) return bad(c, 'Permission denied');
+    const updatedGuest: Guest = {
+      ...current,
+      is_sent,
+      last_sent_at: is_sent ? new Date().toISOString() : null,
+    };
+    await entity.save(updatedGuest);
+    return ok(c, updatedGuest);
+  });
+  const sendLogSchema = z.object({
+    guest_id: z.string(),
+    template_id: z.string(),
+    channel: z.enum(['whatsapp', 'copy', 'link']),
+  });
+  app.post('/api/users/:userId/send-logs', zValidator('json', sendLogSchema), async (c) => {
+    const userId = c.req.param('userId');
+    const body = c.req.valid('json');
+    const newLog: SendLog = {
+      id: crypto.randomUUID(),
+      guest_id: body.guest_id,
+      template_id: body.template_id,
+      channel: body.channel,
+      sent_by_user_id: userId,
+      sent_at: new Date().toISOString(),
+    };
+    await SendLogEntity.create(c.env, newLog);
+    return ok(c, newLog);
   });
 }
