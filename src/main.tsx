@@ -38,8 +38,8 @@ const router = createBrowserRouter([
       { path: "templates", element: <UserTemplatesPage /> },
       { path: "send", element: <SendPage /> },
       // Admin Routes
-      { 
-        path: "admin", 
+      {
+        path: "admin",
         element: <ProtectedRoute allowedRoles={['admin']} />,
         children: [
           { path: "", element: <Navigate to="/admin/users" replace /> },
