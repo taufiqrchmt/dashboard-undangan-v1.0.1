@@ -44,7 +44,7 @@ export function AppSidebar(): JSX.Element {
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
             <Send className="text-white h-5 w-5" />
           </div>
-          <span className="text-lg font-semibold">InviteFlow</span>
+          <span className="text-lg font-semibold">Inviteable</span>
         </div>
       </SidebarHeader>
       <SidebarContent className="flex flex-col justify-between">

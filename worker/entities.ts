@@ -64,7 +64,7 @@ export class ProfileEntity extends IndexedEntity<Profile> {
   static readonly indexName = "profiles";
   static readonly initialState: Profile = { id: "", name: "", email: "", role: 'user', created_at: "" };
   static seedData = SEED_PROFILES;
-  static keyOf = (state: any) => state.email; // Use email as unique key for login
+  static keyOf = (state: Profile) => state.email; // Use email as unique key for login
 }
 export class EventSettingEntity extends IndexedEntity<EventSetting> {
   static readonly entityName = "event_setting";

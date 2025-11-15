@@ -19,7 +19,7 @@ import type { GuestGroup } from "@shared/types";
 const groupSchema = z.object({
   name: z.string().min(1, "Group name is required."),
   description: z.string().optional().nullable(),
-  sort_order: z.coerce.number().default(0),
+  sort_order: z.number().default(0),
 });
 type GroupFormValues = z.infer<typeof groupSchema>;
 export default function GroupsPage() {
