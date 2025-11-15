@@ -53,7 +53,7 @@ export default function LoginPage() {
               <Send className="text-white h-6 w-6" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome to Inviteable</CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome to InviteFlow</CardTitle>
           <CardDescription>Sign in to manage your invitations</CardDescription>
         </CardHeader>
         <CardContent>

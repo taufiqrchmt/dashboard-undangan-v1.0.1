@@ -1,75 +1,77 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, ChatBoardEntity } from "./entities";
-import { ok, bad, notFound, isStr } from './core-utils';
-
+import { ProfileEntity, EventSettingEntity, MessageTemplateEntity, GuestGroupEntity, GuestEntity } from "./entities";
+import { ok, bad, notFound } from './core-utils';
+import type { Profile } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  app.get('/api/test', (c) => c.json({ success: true, data: { name: 'CF Workers Demo' }}));
-
-  // USERS
-  app.get('/api/users', async (c) => {
-    await UserEntity.ensureSeed(c.env);
-    const cq = c.req.query('cursor');
-    const lq = c.req.query('limit');
-    const page = await UserEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    return ok(c, page);
+  // Ensure all seed data is present on first load
+  app.use('/api/*', async (c, next) => {
+    await Promise.all([
+      ProfileEntity.ensureSeed(c.env),
+      EventSettingEntity.ensureSeed(c.env),
+      MessageTemplateEntity.ensureSeed(c.env),
+      GuestGroupEntity.ensureSeed(c.env),
+      GuestEntity.ensureSeed(c.env),
+    ]);
+    await next();
   });
-
-  app.post('/api/users', async (c) => {
-    const { name } = (await c.req.json()) as { name?: string };
-    if (!name?.trim()) return bad(c, 'name required');
-    return ok(c, await UserEntity.create(c.env, { id: crypto.randomUUID(), name: name.trim() }));
+  // AUTH
+  app.post('/api/auth/login', async (c) => {
+    const { email, password } = await c.req.json<{ email?: string, password?: string }>();
+    let effectiveEmail = email;
+    if (email === 'admin') {
+      effectiveEmail = 'admin@example.com';
+    }
+    if (!effectiveEmail) {
+      return bad(c, 'Email is required');
+    }
+    // This is a MOCK login. In a real app, you'd verify the password hash.
+    // Here, we just check if the user exists and if the password matches the mock one.
+    const profileEntity = new ProfileEntity(c.env, effectiveEmail);
+    if (!(await profileEntity.exists())) {
+      return notFound(c, 'Invalid credentials');
+    }
+    const profile = await profileEntity.getState();
+    if (profile.role === 'admin' && password !== '#m4rjinaL') {
+      return bad(c, 'Invalid credentials');
+    }
+    // For regular users, we are not checking passwords in this mock setup.
+    return ok(c, profile);
   });
-
-  // CHATS
-  app.get('/api/chats', async (c) => {
-    await ChatBoardEntity.ensureSeed(c.env);
-    const cq = c.req.query('cursor');
-    const lq = c.req.query('limit');
-    const page = await ChatBoardEntity.list(c.env, cq ?? null, lq ? Math.max(1, (Number(lq) | 0)) : undefined);
-    return ok(c, page);
+  // PROFILES
+  app.get('/api/profiles', async (c) => {
+    const { items } = await ProfileEntity.list(c.env);
+    return ok(c, items);
   });
-
-  app.post('/api/chats', async (c) => {
-    const { title } = (await c.req.json()) as { title?: string };
-    if (!title?.trim()) return bad(c, 'title required');
-    const created = await ChatBoardEntity.create(c.env, { id: crypto.randomUUID(), title: title.trim(), messages: [] });
-    return ok(c, { id: created.id, title: created.title });
+  // EVENT SETTINGS (for a specific user)
+  app.get('/api/users/:userId/event-settings', async (c) => {
+    const userId = c.req.param('userId');
+    const { items } = await EventSettingEntity.list(c.env);
+    const userSettings = items.find(item => item.user_id === userId);
+    if (!userSettings) {
+      return notFound(c, 'Event settings not found for this user.');
+    }
+    return ok(c, userSettings);
   });
-
-  // MESSAGES
-  app.get('/api/chats/:chatId/messages', async (c) => {
-    const chat = new ChatBoardEntity(c.env, c.req.param('chatId'));
-    if (!await chat.exists()) return notFound(c, 'chat not found');
-    return ok(c, await chat.listMessages());
+  // TEMPLATES (for a specific user + global)
+  app.get('/api/users/:userId/templates', async (c) => {
+    const userId = c.req.param('userId');
+    const { items } = await MessageTemplateEntity.list(c.env);
+    const userTemplates = items.filter(t => t.scope === 'global' || t.owner_user_id === userId);
+    return ok(c, userTemplates);
   });
-
-  app.post('/api/chats/:chatId/messages', async (c) => {
-    const chatId = c.req.param('chatId');
-    const { userId, text } = (await c.req.json()) as { userId?: string; text?: string };
-    if (!isStr(userId) || !text?.trim()) return bad(c, 'userId and text required');
-    const chat = new ChatBoardEntity(c.env, chatId);
-    if (!await chat.exists()) return notFound(c, 'chat not found');
-    return ok(c, await chat.sendMessage(userId, text.trim()));
+  // GUEST GROUPS (for a specific user)
+  app.get('/api/users/:userId/groups', async (c) => {
+    const userId = c.req.param('userId');
+    const { items } = await GuestGroupEntity.list(c.env);
+    const userGroups = items.filter(g => g.user_id === userId).sort((a, b) => a.sort_order - b.sort_order);
+    return ok(c, userGroups);
   });
-
-  // DELETE: Users
-  app.delete('/api/users/:id', async (c) => ok(c, { id: c.req.param('id'), deleted: await UserEntity.delete(c.env, c.req.param('id')) }));
-
-  app.post('/api/users/deleteMany', async (c) => {
-    const { ids } = (await c.req.json()) as { ids?: string[] };
-    const list = ids?.filter(isStr) ?? [];
-    if (list.length === 0) return bad(c, 'ids required');
-    return ok(c, { deletedCount: await UserEntity.deleteMany(c.env, list), ids: list });
-  });
-
-  // DELETE: Chats
-  app.delete('/api/chats/:id', async (c) => ok(c, { id: c.req.param('id'), deleted: await ChatBoardEntity.delete(c.env, c.req.param('id')) }));
-
-  app.post('/api/chats/deleteMany', async (c) => {
-    const { ids } = (await c.req.json()) as { ids?: string[] };
-    const list = ids?.filter(isStr) ?? [];
-    if (list.length === 0) return bad(c, 'ids required');
-    return ok(c, { deletedCount: await ChatBoardEntity.deleteMany(c.env, list), ids: list });
+  // GUESTS (for a specific user)
+  app.get('/api/users/:userId/guests', async (c) => {
+    const userId = c.req.param('userId');
+    const { items } = await GuestEntity.list(c.env);
+    const userGuests = items.filter(g => g.user_id === userId);
+    return ok(c, userGuests);
   });
 }
